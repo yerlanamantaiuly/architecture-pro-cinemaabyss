@@ -369,119 +369,32 @@ cat .docker/config.json | base64
 ## Задание 4
 Для простоты дальнейшего обновления и развертывания вам как архитектуру необходимо так же реализовать helm-чарты для прокси-сервиса и проверить работу 
 
-Результат на текущий момент:
+Результат:
 - Helm chart в `src/kubernetes/helm` доведён до состояния, повторяющего рабочие plain Kubernetes manifests
-- В `values.yaml` обновлены пути до образов на ваш GHCR:
-  - `ghcr.io/yerlanamantaiuly/architecture-pro-cinemaabyss/monolith`
-  - `ghcr.io/yerlanamantaiuly/architecture-pro-cinemaabyss/movies-service`
-  - `ghcr.io/yerlanamantaiuly/architecture-pro-cinemaabyss/events-service`
-  - `ghcr.io/yerlanamantaiuly/architecture-pro-cinemaabyss/proxy-service`
-- В `templates/services/proxy-service.yaml` добавлены полноценные `Deployment` и `Service`
-- В `templates/services/events-service.yaml` добавлены полноценные `Deployment` и `Service`
+- В `values.yaml` обновлены пути до образов в `ghcr.io/yerlanamantaiuly/architecture-pro-cinemaabyss/*`
+- В `templates/services/proxy-service.yaml` и `templates/services/events-service.yaml` добавлены полноценные шаблоны `Deployment` и `Service`
 - В `templates/configmap.yaml` добавлены корректные адреса `MONOLITH_URL`, `MOVIES_SERVICE_URL`, `EVENTS_SERVICE_URL`
 - Helm chart переведён на использование уже существующего `imagePullSecret` в кластере вместо хранения токена в `values.yaml`
-- В `templates/services/postgres.yaml` исправлен сценарий без persistence
-- Для ускорения проверки на сервере добавлены helper-скрипты `ops/remote-vm/create-ghcr-secret.sh` и `ops/remote-vm/run-helm-install.sh`
-
-Что нужно сделать на сервере для финального подтверждения задания:
-1. Перейдите в директорию helm и отредактируйте файл values.yaml
-
-```yaml
-# Proxy service configuration
-proxyService:
-  enabled: true
-  image:
-    repository: ghcr.io/yerlanamantaiuly/architecture-pro-cinemaabyss/proxy-service
-    tag: latest
-    pullPolicy: Always
-  replicas: 1
-  resources:
-    limits:
-      cpu: 300m
-      memory: 256Mi
-    requests:
-      cpu: 100m
-      memory: 128Mi
-  service:
-    port: 80
-    targetPort: 8000
-    type: ClusterIP
-```
-
-- Проверьте, что для всех сервисов указан ваш GHCR-репозиторий
-- Helm chart больше не требует хранить токен в `values.yaml`
-- Секрет для доступа к `ghcr.io` создаётся в кластере отдельно:
-  ```yaml
-  imagePullSecret:
-    create: false
-    name: dockerconfigjson
-  ```
-
-Команда для создания секрета:
-
-```bash
-kubectl -n cinemaabyss create secret docker-registry dockerconfigjson \
-  --docker-server=ghcr.io \
-  --docker-username=YOUR_GITHUB_LOGIN \
-  --docker-password=YOUR_GITHUB_PAT \
-  --dry-run=client -o yaml | kubectl apply -f -
-```
-
-2. Шаблоны `proxy-service.yaml` и `events-service.yaml` уже заполнены на основе рабочей Kubernetes-конфигурации
-
-```yaml
-template:
-    metadata:
-      labels:
-        app: proxy-service
-    spec:
-      containers:
-      - name: proxy-service
-        image: ghcr.io/yerlanamantaiuly/architecture-pro-cinemaabyss/proxy-service:latest
-        # далее используются envFrom, probes, resources и imagePullSecrets
-```
-
-3. Проверьте установку на сервере
-Сначала удалим старую установку руками:
-
-```bash
-kubectl delete all --all -n cinemaabyss
-kubectl delete  namespace cinemaabyss
-```
-
-Затем можно использовать либо прямую команду Helm, либо helper-скрипт:
-
-```bash
-helm upgrade --install cinemaabyss .\src\kubernetes\helm --namespace cinemaabyss --create-namespace
-```
-
-или
-
-```bash
-bash ops/remote-vm/run-helm-install.sh
-```
-
-Если в процессе будет ошибка
-```code
-[2025-04-08 21:43:38,780] ERROR Fatal error during KafkaServer startup. Prepare to shutdown (kafka.server.KafkaServer)
-kafka.common.InconsistentClusterIdException: The Cluster ID OkOjGPrdRimp8nkFohYkCw doesn't match stored clusterId Some(sbkcoiSiQV2h_mQpwy05zQ) in meta.properties. The broker is trying to join the wrong cluster. Configured zookeeper.connect may be wrong.
-```
-
-Удалите старые PVC/PV для Kafka/Zookeeper/Postgres и повторите установку, если Helm поднимается поверх предыдущего кластера с уже существующими данными.
-
-Проверьте развертывание:
-```bash
-kubectl get pods -n cinemaabyss
-minikube tunnel
-```
-
-Потом вызовите 
-https://cinemaabyss.example.com/api/movies
-и приложите скриншот развертывания helm и вывода https://cinemaabyss.example.com/api/movies
+- Добавлены helper-скрипты `ops/remote-vm/create-ghcr-secret.sh` и `ops/remote-vm/run-helm-install.sh` для подготовки секрета и повторяемой установки chart
+- Выполнена установка через Helm в namespace `cinemaabyss`, release `cinemaabyss` успешно развернут со статусом `deployed`
+- Все pod'ы после установки через Helm вышли в состояние `Running`:
+  - `events-service`
+  - `kafka`
+  - `monolith`
+  - `movies-service`
+  - `postgres`
+  - `proxy-service`
+  - `zookeeper`
+- Проверка ingress успешна: `curl http://cinemaabyss.example.com/api/movies` возвращает список фильмов
+- Postman/Newman тесты против ingress Kubernetes после установки через Helm успешно пройдены:
+  - `22` requests
+  - `42` assertions
+  - `0` failed requests
+  - `0` failed assertions
 
 ### Скриншот Helm deployment
 
-Скриншот успешного `helm install` и состояния pod'ов в namespace `cinemaabyss`.
+Скриншот успешного `helm install` / `helm upgrade --install` и состояния pod'ов в namespace `cinemaabyss`.
 
 ![Helm deployment](docs/screenshots/helm-deployment.png)
 
@@ -490,6 +403,12 @@ https://cinemaabyss.example.com/api/movies
 Скриншот успешного вызова `https://cinemaabyss.example.com/api/movies` после установки через Helm.
 
 ![Helm movies endpoint](docs/screenshots/helm-movies.png)
+
+### Скриншот Kubernetes Postman / Newman после Helm
+
+Успешный прогон API-тестов против ingress Kubernetes после установки через Helm.
+
+![Helm Postman tests](docs/screenshots/helm-postman-tests.png)
 
 
 # Задание 5

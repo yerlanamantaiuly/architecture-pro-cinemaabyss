@@ -415,72 +415,56 @@ cat .docker/config.json | base64
 # Задание 5
 Компания планирует активно развиваться и для повышения надежности, безопасности, реализации сетевых паттернов типа Circuit Breaker и канареечного деплоя вам как архитектору необходимо развернуть istio и настроить circuit breaker для monolith и movies сервисов.
 
-```bash
+Результат:
+- Для `Istio` добавлены отдельные файлы и скрипты, которые накатываются поверх уже рабочего Helm/Kubernetes контура и не ломают проверяемый сценарий задания 4:
+  - `src/kubernetes/circuit-breaker-config.yaml`
+  - `ops/remote-vm/run-istio-install.sh`
+  - `ops/remote-vm/run-istio-fortio.sh`
+  - `ops/remote-vm/cleanup-istio.sh`
+- В `istio-system` успешно установлены:
+  - `istio-base`
+  - `istiod`
+  - `istio-ingressgateway`
+- Для namespace `cinemaabyss` включён `sidecar injection`: `istio-injection=enabled`
+- После `rollout restart` сервисы `monolith`, `movies-service`, `events-service`, `proxy-service` успешно поднялись с sidecar'ами `2/2 Running`
+- Применены `DestinationRule` для:
+  - `movies-service.cinemaabyss.svc.cluster.local`
+  - `monolith.cinemaabyss.svc.cluster.local`
+- Базовая работоспособность после включения Istio сохранена: `curl http://cinemaabyss.example.com/api/movies` успешно возвращает список фильмов
+- Для проверки `circuit breaker` развернут `fortio` и выполнен нагрузочный тест `500` запросов с конкурентностью `50`
 
-helm repo add istio https://istio-release.storage.googleapis.com/charts
-helm repo update
+### Результат нагрузки на `movies-service`
 
-helm install istio-base istio/base -n istio-system --set defaultRevision=default --create-namespace
-helm install istio-ingressgateway istio/gateway -n istio-system
-helm install istiod istio/istiod -n istio-system --wait
+Под нагрузкой `fortio` зафиксировано срабатывание `circuit breaker`:
 
-helm install cinemaabyss .\src\kubernetes\helm --namespace cinemaabyss --create-namespace
-
-kubectl label namespace cinemaabyss istio-injection=enabled --overwrite
-
-kubectl get namespace -L istio-injection
-
-kubectl apply -f .\src\kubernetes\circuit-breaker-config.yaml -n cinemaabyss
-
+```text
+Code 200 : 3 (0.6 %)
+Code 503 : 497 (99.4 %)
+cluster.outbound|8081||movies-service.cinemaabyss.svc.cluster.local;.upstream_rq_pending_overflow: 69
+cluster.outbound|8081||movies-service.cinemaabyss.svc.cluster.local;.upstream_rq_pending_total: 4
 ```
 
-Тестирование
+### Результат нагрузки на `monolith`
 
-# fortio
-```bash
-kubectl apply -f https://raw.githubusercontent.com/istio/istio/release-1.25/samples/httpbin/sample-client/fortio-deploy.yaml -n cinemaabyss
+Под нагрузкой `fortio` зафиксировано срабатывание `circuit breaker`:
+
+```text
+Code 200 : 27 (5.4 %)
+Code 503 : 473 (94.6 %)
+cluster.outbound|8080||monolith.cinemaabyss.svc.cluster.local;.upstream_rq_pending_overflow: 473
+cluster.outbound|8080||monolith.cinemaabyss.svc.cluster.local;.upstream_rq_pending_total: 27
 ```
 
-# Get the fortio pod name
-```bash
-FORTIO_POD=$(kubectl get pod -n cinemaabyss | grep fortio | awk '{print $1}')
+### Скриншот работы circuit breaker
 
-kubectl exec -n cinemaabyss $FORTIO_POD -c fortio -- fortio load -c 50 -qps 0 -n 500 -loglevel Warning http://movies-service:8081/api/movies
-```
-Например,
+Скриншот вывода `fortio` и метрик `pilot-agent request GET stats`, подтверждающих `503` и рост `upstream_rq_pending_overflow`.
 
-```bash
-kubectl exec -n cinemaabyss fortio-deploy-b6757cbbb-7c9qg  -c fortio -- fortio load -c 50 -qps 0 -n 500 -loglevel Warning http://movies-service:8081/api/movies
-```
+![Istio circuit breaker](docs/screenshots/istio-circuit-breaker.png)
 
-Вывод будет типа такого
+### Очистка Istio-контура
+
+Для возврата к базовому Helm/Kubernetes сценарию без Istio используется:
 
 ```bash
-IP addresses distribution:
-10.106.113.46:8081: 421
-Code 200 : 79 (15.8 %)
-Code 500 : 22 (4.4 %)
-Code 503 : 399 (79.8 %)
-```
-Можно еще проверить статистику
-
-```bash
-kubectl exec -n cinemaabyss fortio-deploy-b6757cbbb-7c9qg -c istio-proxy -- pilot-agent request GET stats | grep movies-service | grep pending
-```
-
-И там смотрим 
-
-```bash
-cluster.outbound|8081||movies-service.cinemaabyss.svc.cluster.local;.upstream_rq_pending_total: 311 - столько раз срабатывал circuit breaker
-You can see 21 for the upstream_rq_pending_overflow value which means 21 calls so far have been flagged for circuit breaking.
-```
-
-Приложите скриншот работы circuit breaker'а
-
-Удаляем все
-```bash
-istioctl uninstall --purge
-kubectl delete namespace istio-system
-kubectl delete all --all -n cinemaabyss
-kubectl delete namespace cinemaabyss
+bash ops/remote-vm/cleanup-istio.sh
 ```

@@ -14,11 +14,20 @@ helm upgrade --install istio-base istio/base -n istio-system --set defaultRevisi
 
 echo
 echo "Устанавливаю istiod"
-helm upgrade --install istiod istio/istiod -n istio-system --wait
+helm upgrade --install istiod istio/istiod -n istio-system --wait --timeout 300s
+
+echo
+echo "Проверяю состояние istio-system"
+kubectl -n istio-system get pods
+kubectl -n istio-system rollout status deploy/istiod --timeout=300s
 
 echo
 echo "Устанавливаю istio-ingressgateway"
-helm upgrade --install istio-ingressgateway istio/gateway -n istio-system
+helm upgrade --install istio-ingressgateway istio/gateway -n istio-system --wait --timeout 300s
+
+echo
+echo "Проверяю состояние ingress gateway"
+kubectl -n istio-system get pods
 
 echo
 echo "Включаю sidecar injection для namespace cinemaabyss"

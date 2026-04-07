@@ -397,13 +397,14 @@ cat .docker/config.json | base64
 
 Скриншот успешного `helm install` / `helm upgrade --install` и состояния pod'ов в namespace `cinemaabyss`.
 
-![Helm deployment](docs/screenshots/helm-deployment.png)
+![Helm deployment](docs/screenshots/helm-deployment1.png)
+![Helm deployment](docs/screenshots/helm-deployment2.png)
 
 ### Скриншот `/api/movies` после Helm
 
 Скриншот успешного вызова `https://cinemaabyss.example.com/api/movies` после установки через Helm.
 
-![Helm movies endpoint](docs/screenshots/helm-movies.png)
+![Helm deployment](docs/screenshots/helm-deployment2.png)
 
 ### Скриншот Kubernetes Postman / Newman после Helm
 

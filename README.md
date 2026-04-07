@@ -55,6 +55,10 @@
 ### Kubernetes
 Манифесты Kubernetes для развертывания всех компонентов расположены в src/kubernetes/.
 
+Для задания с `Istio` и `circuit breaker` используется отдельный манифест
+`src/kubernetes/circuit-breaker-config.yaml`, который накатывается поверх уже
+работающего Helm/Kubernetes контура.
+
 ### Helm Charts
 Charts Helm для упрощения развертывания и управления:
 

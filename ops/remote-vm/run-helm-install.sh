@@ -17,6 +17,10 @@ echo "Устанавливаю chart через Helm"
 helm install cinemaabyss ./src/kubernetes/helm --namespace cinemaabyss --create-namespace
 
 echo
+echo "Жду готовности pod'ов"
+kubectl wait --for=condition=Ready pod --all -n cinemaabyss --timeout=300s
+
+echo
 echo "Текущее состояние pod'ов"
 kubectl -n cinemaabyss get pods
 

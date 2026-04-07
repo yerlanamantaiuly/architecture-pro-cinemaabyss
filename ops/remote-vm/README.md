@@ -38,6 +38,12 @@
   заново через `helm install`.
 - `create-ghcr-secret.sh`: создаёт или обновляет `docker-registry` secret для
   доступа Kubernetes к `ghcr.io`, если образы приватные.
+- `run-istio-install.sh`: устанавливает `Istio`, включает sidecar injection для
+  `cinemaabyss` и применяет `circuit-breaker-config.yaml`.
+- `run-istio-fortio.sh`: разворачивает `fortio` и запускает нагрузочный тест для
+  проверки `circuit breaker` у `movies-service` и `monolith`.
+- `cleanup-istio.sh`: удаляет `Istio`, `fortio` и связанные настройки, чтобы
+  вернуться к базовому Helm/Kubernetes сценарию.
 - `start-minikube.sh`: стартует профиль Minikube с размером под этот проект и
   включает ingress.
 
@@ -50,3 +56,5 @@
   диагностический сценарий.
 - Если GHCR-образы публичные, Helm chart можно ставить без `dockerconfigjson` secret.
 - `create-ghcr-secret.sh` нужен только для сценария с приватными образами.
+- `Istio` добавляется отдельным шагом поверх уже работающего Helm/Kubernetes
+  контура, чтобы не ломать проверяемый сценарий из задания 4.

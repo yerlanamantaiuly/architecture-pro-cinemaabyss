@@ -391,6 +391,7 @@ cat .docker/config.json | base64
   - `42` assertions
   - `0` failed requests
   - `0` failed assertions
+- Отдельно подтверждён сценарий проверки ревьюером: после удаления `dockerconfigjson` secret chart по-прежнему успешно устанавливается, так как образы в `GHCR` публичные и не требуют авторизации
 
 ### Скриншот Helm deployment
 

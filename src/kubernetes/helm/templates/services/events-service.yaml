@@ -49,8 +49,10 @@ spec:
           initialDelaySeconds: 15
           periodSeconds: 20
       restartPolicy: Always
+      {{- if .Values.imagePullSecret.enabled }}
       imagePullSecrets:
         - name: {{ .Values.imagePullSecret.name }}
+      {{- end }}
 ---
 apiVersion: v1
 kind: Service

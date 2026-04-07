@@ -37,7 +37,7 @@
 - `run-helm-install.sh`: удаляет предыдущий Helm release/namespace и ставит chart
   заново через `helm install`.
 - `create-ghcr-secret.sh`: создаёт или обновляет `docker-registry` secret для
-  доступа Kubernetes к `ghcr.io`.
+  доступа Kubernetes к `ghcr.io`, если образы приватные.
 - `start-minikube.sh`: стартует профиль Minikube с размером под этот проект и
   включает ingress.
 
@@ -48,5 +48,5 @@
 - `run-full-stack.sh` нужен для проверки уже реализованного docker-контура.
 - Baseline через Docker Compose можно использовать как дополнительный
   диагностический сценарий.
-- Если позже понадобится доступ Kubernetes к GHCR, после публикации образов
-  нужно будет создать репозиторий/форк и подготовить `dockerconfigjson` secret.
+- Если GHCR-образы публичные, Helm chart можно ставить без `dockerconfigjson` secret.
+- `create-ghcr-secret.sh` нужен только для сценария с приватными образами.

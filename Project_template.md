@@ -374,8 +374,8 @@ cat .docker/config.json | base64
 - В `values.yaml` обновлены пути до образов в `ghcr.io/yerlanamantaiuly/architecture-pro-cinemaabyss/*`
 - В `templates/services/proxy-service.yaml` и `templates/services/events-service.yaml` добавлены полноценные шаблоны `Deployment` и `Service`
 - В `templates/configmap.yaml` добавлены корректные адреса `MONOLITH_URL`, `MOVIES_SERVICE_URL`, `EVENTS_SERVICE_URL`
-- Helm chart переведён на использование уже существующего `imagePullSecret` в кластере вместо хранения токена в `values.yaml`
-- Добавлены helper-скрипты `ops/remote-vm/create-ghcr-secret.sh` и `ops/remote-vm/run-helm-install.sh` для подготовки секрета и повторяемой установки chart
+- Chart по умолчанию работает с публичными образами без `imagePullSecret`; поддержка приватного registry оставлена как опциональная настройка через `values.yaml`
+- Добавлены helper-скрипты `ops/remote-vm/create-ghcr-secret.sh` и `ops/remote-vm/run-helm-install.sh`; создание секрета требуется только для приватных образов
 - Выполнена установка через Helm в namespace `cinemaabyss`, release `cinemaabyss` успешно развернут со статусом `deployed`
 - Все pod'ы после установки через Helm вышли в состояние `Running`:
   - `events-service`

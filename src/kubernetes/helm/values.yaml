@@ -5,6 +5,7 @@ global:
 
 # Image pull secret
 imagePullSecret:
+  enabled: false
   create: false
   name: dockerconfigjson
   dockerconfigjson: ""

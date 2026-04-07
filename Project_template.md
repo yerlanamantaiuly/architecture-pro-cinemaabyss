@@ -379,9 +379,9 @@ cat .docker/config.json | base64
 - В `templates/services/proxy-service.yaml` добавлены полноценные `Deployment` и `Service`
 - В `templates/services/events-service.yaml` добавлены полноценные `Deployment` и `Service`
 - В `templates/configmap.yaml` добавлены корректные адреса `MONOLITH_URL`, `MOVIES_SERVICE_URL`, `EVENTS_SERVICE_URL`
-- В `templates/dockerconfigsecret.yaml` секрет переведён на `stringData`, чтобы можно было вставлять содержимое docker-конфига в читаемом виде
+- Helm chart переведён на использование уже существующего `imagePullSecret` в кластере вместо хранения токена в `values.yaml`
 - В `templates/services/postgres.yaml` исправлен сценарий без persistence
-- Для ускорения проверки на сервере добавлен helper `ops/remote-vm/run-helm-install.sh`
+- Для ускорения проверки на сервере добавлены helper-скрипты `ops/remote-vm/create-ghcr-secret.sh` и `ops/remote-vm/run-helm-install.sh`
 
 Что нужно сделать на сервере для финального подтверждения задания:
 1. Перейдите в директорию helm и отредактируйте файл values.yaml
@@ -409,18 +409,23 @@ proxyService:
 ```
 
 - Проверьте, что для всех сервисов указан ваш GHCR-репозиторий
-- Для `imagePullSecrets` вставьте содержимое docker-конфига после логина в `ghcr.io`
+- Helm chart больше не требует хранить токен в `values.yaml`
+- Секрет для доступа к `ghcr.io` создаётся в кластере отдельно:
   ```yaml
-  imagePullSecrets:
-    dockerconfigjson: |
-      {
-        "auths": {
-          "ghcr.io": {
-            "auth": "REPLACE_WITH_BASE64_LOGIN_TOKEN"
-          }
-        }
-      }
+  imagePullSecret:
+    create: false
+    name: dockerconfigjson
   ```
+
+Команда для создания секрета:
+
+```bash
+kubectl -n cinemaabyss create secret docker-registry dockerconfigjson \
+  --docker-server=ghcr.io \
+  --docker-username=YOUR_GITHUB_LOGIN \
+  --docker-password=YOUR_GITHUB_PAT \
+  --dry-run=client -o yaml | kubectl apply -f -
+```
 
 2. Шаблоны `proxy-service.yaml` и `events-service.yaml` уже заполнены на основе рабочей Kubernetes-конфигурации
 
@@ -447,7 +452,7 @@ kubectl delete  namespace cinemaabyss
 Затем можно использовать либо прямую команду Helm, либо helper-скрипт:
 
 ```bash
-helm install cinemaabyss .\src\kubernetes\helm --namespace cinemaabyss --create-namespace
+helm upgrade --install cinemaabyss .\src\kubernetes\helm --namespace cinemaabyss --create-namespace
 ```
 
 или

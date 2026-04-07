@@ -3,16 +3,11 @@ global:
   namespace: cinemaabyss
   domain: cinemaabyss.example.com
 
-# Image pull secrets
-imagePullSecrets:
-  dockerconfigjson: |
-    {
-      "auths": {
-        "ghcr.io": {
-          "auth": "REPLACE_WITH_BASE64_LOGIN_TOKEN"
-        }
-      }
-    }
+# Image pull secret
+imagePullSecret:
+  create: false
+  name: dockerconfigjson
+  dockerconfigjson: ""
 # Database configuration
 database:
   host: postgres

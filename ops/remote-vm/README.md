@@ -36,6 +36,8 @@
 - `run-k8s-plain.sh`: применяет plain Kubernetes manifests в порядке из задания 3.
 - `run-helm-install.sh`: удаляет предыдущий Helm release/namespace и ставит chart
   заново через `helm install`.
+- `create-ghcr-secret.sh`: создаёт или обновляет `docker-registry` secret для
+  доступа Kubernetes к `ghcr.io`.
 - `start-minikube.sh`: стартует профиль Minikube с размером под этот проект и
   включает ingress.
 

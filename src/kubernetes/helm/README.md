@@ -7,7 +7,23 @@ Helm chart для развертывания CinemaAbyss в Kubernetes.
 - Kubernetes 1.16+
 - Helm 3+
 - Ingress controller в кластере
-- Секрет для доступа к `ghcr.io` в `values.yaml`
+- Secret `dockerconfigjson` для доступа к `ghcr.io` в namespace `cinemaabyss`
+
+Создать его можно так:
+
+```bash
+bash ops/remote-vm/create-ghcr-secret.sh
+```
+
+или одной командой:
+
+```bash
+kubectl -n cinemaabyss create secret docker-registry dockerconfigjson \
+  --docker-server=ghcr.io \
+  --docker-username=YOUR_GITHUB_LOGIN \
+  --docker-password=YOUR_GITHUB_PAT \
+  --dry-run=client -o yaml | kubectl apply -f -
+```
 
 ## Установка
 

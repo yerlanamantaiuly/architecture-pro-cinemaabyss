@@ -78,13 +78,25 @@ bash ops/remote-vm/check-host.sh
 bash ops/remote-vm/run-monolith-only.sh
 ```
 
-7. Снимите текущий baseline:
+7. Если хотите поднять уже весь docker-стек:
+
+```bash
+bash ops/remote-vm/run-full-stack.sh
+```
+
+8. При необходимости снимите baseline:
 
 ```bash
 bash ops/remote-vm/run-compose-baseline.sh
 ```
 
-8. Только после реализации `proxy/events` готовьте Minikube:
+9. Для Postman-проверки без установки Node.js на сервер:
+
+```bash
+bash ops/remote-vm/run-postman-docker.sh
+```
+
+10. Только после подготовки Kubernetes-контура готовьте Minikube:
 
 ```bash
 bash ops/remote-vm/start-minikube.sh

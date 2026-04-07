@@ -77,19 +77,19 @@ npm run test:proxy
 
 ### Advanced Usage
 
-The `run-tests.js` script supports several command-line options:
+Скрипт `run-tests.js` поддерживает несколько параметров командной строки:
 
 ```bash
 node run-tests.js --environment <env> --folder <folder> --reporters <reporters> --bail --timeout <ms>
 ```
 
-Options:
-- `--environment`, `-e`: Environment to run tests against (default: 'local')
-- `--collection`, `-c`: Collection to run (default: 'CinemaAbyss')
-- `--folder`, `-f`: Specific folder in the collection to run
-- `--reporters`, `-r`: Reporters to use, comma-separated (default: 'cli,htmlextra,junit')
-- `--bail`, `-b`: Stop on first error (default: false)
-- `--timeout`, `-t`: Request timeout in ms (default: 10000)
+Параметры:
+- `--environment`, `-e`: окружение для запуска тестов (по умолчанию: `local`)
+- `--collection`, `-c`: коллекция для запуска (по умолчанию: `CinemaAbyss`)
+- `--folder`, `-f`: конкретная папка коллекции
+- `--reporters`, `-r`: список репортеров через запятую (по умолчанию: `cli,junit`)
+- `--bail`, `-b`: остановиться на первой ошибке (по умолчанию: `false`)
+- `--timeout`, `-t`: таймаут запроса в миллисекундах (по умолчанию: `10000`)
 
 Example:
 ```bash

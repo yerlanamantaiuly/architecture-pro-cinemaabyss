@@ -18,11 +18,17 @@ if ! curl --resolve "cinemaabyss.example.com:80:${INGRESS_HOST_IP}" -fsS http://
   exit 1
 fi
 
+if ! curl --resolve "cinemaabyss.example.com:80:${INGRESS_HOST_IP}" -fsS http://cinemaabyss.example.com/api/events/health >/dev/null 2>&1; then
+  echo "Events endpoint недоступен по адресу http://cinemaabyss.example.com/api/events/health через ${INGRESS_HOST_IP}"
+  exit 1
+fi
+
 echo "Собираю Docker-образ для Postman/Newman тестов"
 docker build -t cinemaabyss-api-tests .
 
 echo "Запускаю Postman-тесты для Kubernetes"
 docker run --rm \
+  --network host \
   --add-host "cinemaabyss.example.com:${INGRESS_HOST_IP}" \
   -v "${REPORTS_DIR}:/app/reports" \
   cinemaabyss-api-tests \

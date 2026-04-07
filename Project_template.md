@@ -144,6 +144,30 @@ jobs:
 Как только сборка отработает и в github registry появятся ваши образы, можно переходить к блоку настройки Kubernetes
 Успешным результатом данного шага является "зеленая" сборка и "зеленые" тесты
 
+Результат:
+- Workflow [`.github/workflows/docker-build-push.yml`](.github/workflows/docker-build-push.yml) доработан:
+  - добавлен прогон API-тестов перед публикацией образов
+  - добавлена сборка и публикация образов `monolith`, `movies-service`, `events-service`, `proxy-service`
+  - триггеры обновлены для рабочих веток и изменений в `src/**`, `tests/postman/**`, `docker-compose.yml` и workflow-файлах
+- Workflow [`.github/workflows/api-tests.yml`](.github/workflows/api-tests.yml) доработан:
+  - выполняет `docker compose up -d --build`
+  - ждёт готовности сервисов через HTTP health-check
+  - запускает Postman-тесты через `npm run test:local`
+- GHCR-образы опубликованы в пространстве `ghcr.io/yerlanamantaiuly/architecture-pro-cinemaabyss`
+- GitHub Actions и публикация образов подтверждены отдельно в интерфейсе GitHub
+
+### Скриншот GitHub Actions
+
+Подтверждение успешных запусков workflow для ветки `cinema`.
+
+![GitHub Actions](docs/screenshots/github-jobs.png)
+
+### Скриншот GHCR Packages
+
+Подтверждение публикации образов `monolith`, `movies-service`, `events-service`, `proxy-service` в GitHub Container Registry.
+
+![GHCR Packages](docs/screenshots/github-packages.png)
+
 
 ### Proxy в Kubernetes
 
@@ -308,11 +332,58 @@ cat .docker/config.json | base64
 #### Шаг 3
 Добавьте сюда скриншота вывода при вызове https://cinemaabyss.example.com/api/movies и  скриншот вывода event-service после вызова тестов.
 
+Результат:
+- В Kubernetes добавлены и настроены:
+  - [`src/kubernetes/events-service.yaml`](src/kubernetes/events-service.yaml)
+  - [`src/kubernetes/proxy-service.yaml`](src/kubernetes/proxy-service.yaml)
+  - [`src/kubernetes/ingress.yaml`](src/kubernetes/ingress.yaml)
+  - [`src/kubernetes/configmap.yaml`](src/kubernetes/configmap.yaml)
+  - [`src/kubernetes/dockerconfigsecret.yaml`](src/kubernetes/dockerconfigsecret.yaml)
+- Образы в `src/kubernetes/*.yaml` обновлены под `ghcr.io/yerlanamantaiuly/architecture-pro-cinemaabyss/...`
+- Все pod'ы в namespace `cinemaabyss` успешно поднялись в статус `Running`
+- Ingress работает, вызов `http://cinemaabyss.example.com/api/movies` успешно возвращает список фильмов
+- Kubernetes-тесты Postman/Newman успешно пройдены: `22` запросов, `42` assertions, `0` ошибок
+- `events-service` обработал события из Kafka, что подтверждается логами `Processed event from topic=...`
+
+### Скриншот вызова `/api/movies` в Kubernetes
+
+Результат вызова `http://cinemaabyss.example.com/api/movies` через ingress Kubernetes.
+
+![Cinema K8s](docs/screenshots/cinema-k8s.png)
+
+### Скриншот Kubernetes Postman / Newman
+
+Успешный прогон API-тестов против ingress Kubernetes.
+
+![Kubernetes Postman tests](assets/c__Users_ye.amantaiuly_AppData_Roaming_Cursor_User_workspaceStorage_abe7d098a093b2df805ede663e84f845_images_image-4cbcb4d6-b05f-4edb-95a6-4938c63e746d.png)
+
+### Логи `events-service` после тестов
+
+```text
+2026/04/07 11:48:44 Processed event from topic=movie-events partition=0 offset=0 payload={"id":"movie-1775562523164799597","type":"movie","timestamp":"2026-04-07T11:48:43Z","payload":{"movie_id":6,"title":"Test Movie Event","action":"viewed","user_id":4}}
+2026/04/07 11:48:45 Processed event from topic=user-events partition=0 offset=0 payload={"id":"user-1775562524299256290","type":"user","timestamp":"2026-04-07T11:48:44Z","payload":{"user_id":4,"username":"testuser","action":"logged_in","timestamp":"2026-04-07T11:48:44.296Z"}}
+2026/04/07 11:48:46 Processed event from topic=payment-events partition=0 offset=0 payload={"id":"payment-1775562525421147477","type":"payment","timestamp":"2026-04-07T11:48:45Z","payload":{"payment_id":4,"user_id":4,"amount":9.99,"status":"completed","timestamp":"2026-04-07T11:48:45.418Z","method_type":"credit_card"}}
+```
+
 
 ## Задание 4
 Для простоты дальнейшего обновления и развертывания вам как архитектуру необходимо так же реализовать helm-чарты для прокси-сервиса и проверить работу 
 
-Для этого:
+Результат на текущий момент:
+- Helm chart в `src/kubernetes/helm` доведён до состояния, повторяющего рабочие plain Kubernetes manifests
+- В `values.yaml` обновлены пути до образов на ваш GHCR:
+  - `ghcr.io/yerlanamantaiuly/architecture-pro-cinemaabyss/monolith`
+  - `ghcr.io/yerlanamantaiuly/architecture-pro-cinemaabyss/movies-service`
+  - `ghcr.io/yerlanamantaiuly/architecture-pro-cinemaabyss/events-service`
+  - `ghcr.io/yerlanamantaiuly/architecture-pro-cinemaabyss/proxy-service`
+- В `templates/services/proxy-service.yaml` добавлены полноценные `Deployment` и `Service`
+- В `templates/services/events-service.yaml` добавлены полноценные `Deployment` и `Service`
+- В `templates/configmap.yaml` добавлены корректные адреса `MONOLITH_URL`, `MOVIES_SERVICE_URL`, `EVENTS_SERVICE_URL`
+- В `templates/dockerconfigsecret.yaml` секрет переведён на `stringData`, чтобы можно было вставлять содержимое docker-конфига в читаемом виде
+- В `templates/services/postgres.yaml` исправлен сценарий без persistence
+- Для ускорения проверки на сервере добавлен helper `ops/remote-vm/run-helm-install.sh`
+
+Что нужно сделать на сервере для финального подтверждения задания:
 1. Перейдите в директорию helm и отредактируйте файл values.yaml
 
 ```yaml
@@ -320,7 +391,7 @@ cat .docker/config.json | base64
 proxyService:
   enabled: true
   image:
-    repository: ghcr.io/db-exp/cinemaabysstest/proxy-service
+    repository: ghcr.io/yerlanamantaiuly/architecture-pro-cinemaabyss/proxy-service
     tag: latest
     pullPolicy: Always
   replicas: 1
@@ -337,14 +408,21 @@ proxyService:
     type: ClusterIP
 ```
 
-- Вместо ghcr.io/db-exp/cinemaabysstest/proxy-service напишите свой путь до образа для всех сервисов
-- для imagePullSecret проставьте свое значение (скопируйте из конфигурации kubernetes)
+- Проверьте, что для всех сервисов указан ваш GHCR-репозиторий
+- Для `imagePullSecrets` вставьте содержимое docker-конфига после логина в `ghcr.io`
   ```yaml
   imagePullSecrets:
-      dockerconfigjson: ewoJImF1dGhzIjogewoJCSJnaGNyLmlvIjogewoJCQkiYXV0aCI6ICJaR0l0Wlhod09tZG9jRjl2UTJocVZIa3dhMWhKVDIxWmFVZHJOV2hRUW10aFVXbFZSbTVaTjJRMFNYUjRZMWM9IgoJCX0KCX0sCgkiY3JlZHNTdG9yZSI6ICJkZXNrdG9wIiwKCSJjdXJyZW50Q29udGV4dCI6ICJkZXNrdG9wLWxpbnV4IiwKCSJwbHVnaW5zIjogewoJCSIteC1jbGktaGludHMiOiB7CgkJCSJlbmFibGVkIjogInRydWUiCgkJfQoJfSwKCSJmZWF0dXJlcyI6IHsKCQkiaG9va3MiOiAidHJ1ZSIKCX0KfQ==
+    dockerconfigjson: |
+      {
+        "auths": {
+          "ghcr.io": {
+            "auth": "REPLACE_WITH_BASE64_LOGIN_TOKEN"
+          }
+        }
+      }
   ```
 
-2. В папке ./templates/services заполните шаблоны для proxy-service.yaml и events-service.yaml (опирайтесь на свою kubernetes конфигурацию - смысл helm'а сделать шаблоны для быстрого обновления и установки)
+2. Шаблоны `proxy-service.yaml` и `events-service.yaml` уже заполнены на основе рабочей Kubernetes-конфигурации
 
 ```yaml
 template:
@@ -353,25 +431,38 @@ template:
         app: proxy-service
     spec:
       containers:
-       Тут ваша конфигурация
+      - name: proxy-service
+        image: ghcr.io/yerlanamantaiuly/architecture-pro-cinemaabyss/proxy-service:latest
+        # далее используются envFrom, probes, resources и imagePullSecrets
 ```
 
-3. Проверьте установку
-Сначала удалим установку руками
+3. Проверьте установку на сервере
+Сначала удалим старую установку руками:
 
 ```bash
 kubectl delete all --all -n cinemaabyss
 kubectl delete  namespace cinemaabyss
 ```
-Запустите 
+
+Затем можно использовать либо прямую команду Helm, либо helper-скрипт:
+
 ```bash
 helm install cinemaabyss .\src\kubernetes\helm --namespace cinemaabyss --create-namespace
 ```
+
+или
+
+```bash
+bash ops/remote-vm/run-helm-install.sh
+```
+
 Если в процессе будет ошибка
 ```code
 [2025-04-08 21:43:38,780] ERROR Fatal error during KafkaServer startup. Prepare to shutdown (kafka.server.KafkaServer)
 kafka.common.InconsistentClusterIdException: The Cluster ID OkOjGPrdRimp8nkFohYkCw doesn't match stored clusterId Some(sbkcoiSiQV2h_mQpwy05zQ) in meta.properties. The broker is trying to join the wrong cluster. Configured zookeeper.connect may be wrong.
 ```
+
+Удалите старые PVC/PV для Kafka/Zookeeper/Postgres и повторите установку, если Helm поднимается поверх предыдущего кластера с уже существующими данными.
 
 Проверьте развертывание:
 ```bash
@@ -382,6 +473,18 @@ minikube tunnel
 Потом вызовите 
 https://cinemaabyss.example.com/api/movies
 и приложите скриншот развертывания helm и вывода https://cinemaabyss.example.com/api/movies
+
+### Скриншот Helm deployment
+
+Скриншот успешного `helm install` и состояния pod'ов в namespace `cinemaabyss`.
+
+![Helm deployment](docs/screenshots/helm-deployment.png)
+
+### Скриншот `/api/movies` после Helm
+
+Скриншот успешного вызова `https://cinemaabyss.example.com/api/movies` после установки через Helm.
+
+![Helm movies endpoint](docs/screenshots/helm-movies.png)
 
 
 # Задание 5

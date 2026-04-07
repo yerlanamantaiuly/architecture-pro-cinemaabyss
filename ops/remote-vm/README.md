@@ -34,6 +34,8 @@
 - `run-compose-baseline.sh`: поднимает только те сервисы, которые уже реально
   есть в репозитории, и сохраняет диагностический отчет.
 - `run-k8s-plain.sh`: применяет plain Kubernetes manifests в порядке из задания 3.
+- `run-helm-install.sh`: удаляет предыдущий Helm release/namespace и ставит chart
+  заново через `helm install`.
 - `start-minikube.sh`: стартует профиль Minikube с размером под этот проект и
   включает ingress.
 

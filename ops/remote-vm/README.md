@@ -30,7 +30,7 @@
 - `run-monolith-only.sh`: поднимает только старый монолитный контур с PostgreSQL.
 - `run-full-stack.sh`: поднимает весь docker-стек и проверяет основные endpoint'ы.
 - `run-postman-docker.sh`: прогоняет Postman/Newman тесты в Docker без установки Node.js на сервер.
-- `run-postman-kubernetes.sh`: прогоняет Postman/Newman тесты против ingress Kubernetes без установки Node.js на сервер.
+- `run-postman-kubernetes.sh`: прогоняет Postman/Newman тесты против ingress Kubernetes без установки Node.js на сервер. По умолчанию использует `192.168.49.2`, при необходимости IP можно переопределить через `K8S_INGRESS_IP`.
 - `run-compose-baseline.sh`: поднимает только те сервисы, которые уже реально
   есть в репозитории, и сохраняет диагностический отчет.
 - `run-k8s-plain.sh`: применяет plain Kubernetes manifests в порядке из задания 3.

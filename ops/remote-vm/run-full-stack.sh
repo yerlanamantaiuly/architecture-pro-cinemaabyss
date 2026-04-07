@@ -9,6 +9,12 @@ docker compose up -d
 
 echo "Жду готовности сервисов"
 for _ in {1..45}; do
+  if docker compose ps --format json | grep '"State":"exited"' >/dev/null 2>&1; then
+    echo "Один или несколько контейнеров завершились с ошибкой"
+    docker compose ps
+    exit 1
+  fi
+
   monolith_ok=0
   movies_ok=0
   events_ok=0
@@ -25,6 +31,15 @@ for _ in {1..45}; do
 
   sleep 4
 done
+
+if ! curl -fsS http://localhost:8080/health >/dev/null 2>&1 || \
+   ! curl -fsS http://localhost:8081/api/movies/health >/dev/null 2>&1 || \
+   ! curl -fsS http://localhost:8082/api/events/health >/dev/null 2>&1 || \
+   ! curl -fsS http://localhost:8000/health >/dev/null 2>&1; then
+  echo "Не все сервисы стали доступны вовремя"
+  docker compose ps
+  exit 1
+fi
 
 echo
 echo "Статус сервисов"

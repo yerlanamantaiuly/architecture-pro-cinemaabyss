@@ -72,13 +72,19 @@ sudo bash ops/remote-vm/bootstrap-ubuntu-24.04.sh
 bash ops/remote-vm/check-host.sh
 ```
 
-6. Снимите текущий baseline:
+6. Если хотите сначала поднять только старый контур:
+
+```bash
+bash ops/remote-vm/run-monolith-only.sh
+```
+
+7. Снимите текущий baseline:
 
 ```bash
 bash ops/remote-vm/run-compose-baseline.sh
 ```
 
-7. Только после реализации `proxy/events` готовьте Minikube:
+8. Только после реализации `proxy/events` готовьте Minikube:
 
 ```bash
 bash ops/remote-vm/start-minikube.sh

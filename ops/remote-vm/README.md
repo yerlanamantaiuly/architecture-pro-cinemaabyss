@@ -16,8 +16,9 @@
 3. Запустить `ops/remote-vm/bootstrap-ubuntu-24.04.sh` от `root`.
 4. Перелогиниться, чтобы применилось членство в группе Docker.
 5. Запустить `ops/remote-vm/check-host.sh`.
-6. Запустить `ops/remote-vm/run-compose-baseline.sh` из корня репозитория.
-7. После появления `proxy/events` и образов запустить
+6. Если нужно быстро оживить старый контур, запустить `ops/remote-vm/run-monolith-only.sh`.
+7. Запустить `ops/remote-vm/run-compose-baseline.sh` из корня репозитория.
+8. После появления `proxy/events` и образов запустить
    `ops/remote-vm/start-minikube.sh`.
 
 ## Что делают скрипты
@@ -25,6 +26,7 @@
 - `bootstrap-ubuntu-24.04.sh`: ставит Docker, Compose plugin, `kubectl`, Helm,
   Minikube, Git, `curl` и полезные сетевые утилиты.
 - `check-host.sh`: проверяет CPU, память, диск и наличие нужных бинарников.
+- `run-monolith-only.sh`: поднимает только старый монолитный контур с PostgreSQL.
 - `run-compose-baseline.sh`: поднимает только те сервисы, которые уже реально
   есть в репозитории, и сохраняет диагностический отчет.
 - `start-minikube.sh`: стартует профиль Minikube с размером под этот проект и

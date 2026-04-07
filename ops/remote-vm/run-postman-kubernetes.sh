@@ -12,7 +12,8 @@ docker build -t cinemaabyss-api-tests .
 
 echo "Запускаю Postman-тесты для Kubernetes"
 docker run --rm \
-  --add-host cinemaabyss.example.com:host-gateway \
+  --network host \
+  --add-host cinemaabyss.example.com:127.0.0.1 \
   -v "${REPORTS_DIR}:/app/reports" \
   cinemaabyss-api-tests \
   --environment kubernetes

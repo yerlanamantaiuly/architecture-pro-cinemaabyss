@@ -190,22 +190,16 @@ func (a *app) publishEvent(topic, eventType string, payload interface{}) (*event
 		return nil, fmt.Errorf("marshal event: %w", err)
 	}
 
-	conn, err := kafka.DialLeader(ctx, "tcp", a.brokers[0], topic, 0)
-	if err != nil {
-		return nil, fmt.Errorf("dial kafka leader for topic %s: %w", topic, err)
+	writer := &kafka.Writer{
+		Addr:                   kafka.TCP(a.brokers...),
+		Topic:                  topic,
+		Balancer:               &kafka.LeastBytes{},
+		AllowAutoTopicCreation: true,
+		RequiredAcks:           kafka.RequireOne,
 	}
-	defer conn.Close()
+	defer writer.Close()
 
-	if err := conn.SetWriteDeadline(time.Now().Add(10 * time.Second)); err != nil {
-		return nil, fmt.Errorf("set write deadline: %w", err)
-	}
-
-	offsetBeforeWrite, err := conn.ReadLastOffset()
-	if err != nil {
-		return nil, fmt.Errorf("read last offset for topic %s: %w", topic, err)
-	}
-
-	_, err = conn.WriteMessages(kafka.Message{
+	err = writer.WriteMessages(ctx, kafka.Message{
 		Time:  time.Now().UTC(),
 		Value: rawMessage,
 	})
@@ -216,7 +210,7 @@ func (a *app) publishEvent(topic, eventType string, payload interface{}) (*event
 	return &eventResponse{
 		Status:    "success",
 		Partition: 0,
-		Offset:    offsetBeforeWrite,
+		Offset:    0,
 		Event:     envelope,
 	}, nil
 }

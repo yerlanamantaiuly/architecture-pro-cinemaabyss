@@ -102,7 +102,13 @@ bash ops/remote-vm/run-postman-docker.sh
 bash ops/remote-vm/run-k8s-plain.sh
 ```
 
-11. Только после подготовки Kubernetes-контура готовьте Minikube:
+11. Для Postman-проверки Kubernetes без установки Node.js:
+
+```bash
+bash ops/remote-vm/run-postman-kubernetes.sh
+```
+
+12. Только после подготовки Kubernetes-контура готовьте Minikube:
 
 ```bash
 bash ops/remote-vm/start-minikube.sh

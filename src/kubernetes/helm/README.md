@@ -1,29 +1,55 @@
 # CinemaAbyss Helm Chart
 
-This Helm chart deploys the CinemaAbyss application on a Kubernetes cluster.
+Helm chart для развертывания CinemaAbyss в Kubernetes.
 
-## Prerequisites
+## Что нужно заранее
 
 - Kubernetes 1.16+
-- Helm 3.0+
-- PV provisioner support in the underlying infrastructure (if persistence is enabled)
+- Helm 3+
+- Ingress controller в кластере
+- Публично доступные образы в `ghcr.io`
 
-## Installing the Chart
+По умолчанию chart рассчитан на публичные образы и не требует дополнительной авторизации.
 
-To install the chart with the release name `cinemaabyss`:
+Если образы приватные, включите `imagePullSecret.enabled=true` и создайте secret:
 
 ```bash
-helm install cinemaabyss ./cinemaabyss
+bash ops/remote-vm/create-ghcr-secret.sh
 ```
 
-The command deploys CinemaAbyss on the Kubernetes cluster with default configuration. The [Parameters](#parameters) section lists the parameters that can be configured during installation.
+## Установка
 
-## Uninstalling the Chart
-
-To uninstall/delete the `cinemaabyss` deployment:
+Из корня репозитория:
 
 ```bash
-helm uninstall cinemaabyss
+helm install cinemaabyss ./src/kubernetes/helm --namespace cinemaabyss --create-namespace
+```
+
+Для переустановки после правок:
+
+```bash
+helm upgrade --install cinemaabyss ./src/kubernetes/helm --namespace cinemaabyss --create-namespace
+```
+
+Быстрый серверный helper:
+
+```bash
+bash ops/remote-vm/run-helm-install.sh
+```
+
+## Удаление
+
+```bash
+helm uninstall cinemaabyss -n cinemaabyss
+```
+
+Для приватных образов можно переопределить параметры:
+
+```bash
+helm upgrade --install cinemaabyss ./src/kubernetes/helm \
+  --namespace cinemaabyss \
+  --create-namespace \
+  --set imagePullSecret.enabled=true
 ```
 
 ## Parameters
@@ -60,7 +86,7 @@ helm uninstall cinemaabyss
 | Name                           | Description                                     | Value           |
 |--------------------------------|-------------------------------------------------|-----------------|
 | `monolith.enabled`             | Enable monolith deployment                      | `true`          |
-| `monolith.image.repository`    | Monolith image repository                       | `ghcr.io/db-exp/cinemaabysstest/monolith` |
+| `monolith.image.repository`    | Monolith image repository                       | `ghcr.io/yerlanamantaiuly/architecture-pro-cinemaabyss/monolith` |
 | `monolith.image.tag`           | Monolith image tag                              | `latest`        |
 | `monolith.image.pullPolicy`    | Monolith image pull policy                      | `Always`        |
 | `monolith.replicas`            | Number of monolith replicas                     | `1`             |
@@ -77,7 +103,7 @@ helm uninstall cinemaabyss
 | Name                           | Description                                     | Value           |
 |--------------------------------|-------------------------------------------------|-----------------|
 | `proxyService.enabled`         | Enable proxy service deployment                 | `true`          |
-| `proxyService.image.repository`| Proxy service image repository                  | `ghcr.io/db-exp/cinemaabysstest/proxy-service` |
+| `proxyService.image.repository`| Proxy service image repository                  | `ghcr.io/yerlanamantaiuly/architecture-pro-cinemaabyss/proxy-service` |
 | `proxyService.image.tag`       | Proxy service image tag                         | `latest`        |
 | `proxyService.image.pullPolicy`| Proxy service image pull policy                 | `Always`        |
 | `proxyService.replicas`        | Number of proxy service replicas                | `1`             |
@@ -94,7 +120,7 @@ helm uninstall cinemaabyss
 | Name                           | Description                                     | Value           |
 |--------------------------------|-------------------------------------------------|-----------------|
 | `moviesService.enabled`        | Enable movies service deployment                | `true`          |
-| `moviesService.image.repository`| Movies service image repository                | `ghcr.io/db-exp/cinemaabysstest/movies-service` |
+| `moviesService.image.repository`| Movies service image repository                | `ghcr.io/yerlanamantaiuly/architecture-pro-cinemaabyss/movies-service` |
 | `moviesService.image.tag`      | Movies service image tag                        | `latest`        |
 | `moviesService.image.pullPolicy`| Movies service image pull policy               | `Always`        |
 | `moviesService.replicas`       | Number of movies service replicas               | `1`             |
@@ -111,7 +137,7 @@ helm uninstall cinemaabyss
 | Name                           | Description                                     | Value           |
 |--------------------------------|-------------------------------------------------|-----------------|
 | `eventsService.enabled`        | Enable events service deployment                | `true`          |
-| `eventsService.image.repository`| Events service image repository                | `ghcr.io/db-exp/cinemaabysstest/events-service` |
+| `eventsService.image.repository`| Events service image repository                | `ghcr.io/yerlanamantaiuly/architecture-pro-cinemaabyss/events-service` |
 | `eventsService.image.tag`      | Events service image tag                        | `latest`        |
 | `eventsService.image.pullPolicy`| Events service image pull policy               | `Always`        |
 | `eventsService.replicas`       | Number of events service replicas               | `1`             |
@@ -174,22 +200,18 @@ helm uninstall cinemaabyss
 | `config.gradualMigration`      | Enable gradual migration                        | `true`          |
 | `config.moviesMigrationPercent`| Movies migration percentage                     | `100`           |
 
-## Architecture
+## Проверка
 
-The CinemaAbyss application consists of the following components:
+После установки:
 
-1. **Monolith**: The main application that handles user authentication, subscriptions, and payments.
-2. **Proxy Service**: A service that routes requests to the appropriate microservice or the monolith.
-3. **Movies Service**: A microservice that handles movie-related functionality.
-4. **Events Service**: A microservice that handles event processing using Kafka.
-5. **PostgreSQL**: The database used by all services.
-6. **Kafka**: Message broker for event-driven communication.
-7. **Zookeeper**: Required for Kafka coordination.
+```bash
+kubectl -n cinemaabyss get pods
+kubectl -n cinemaabyss get ingress
+curl http://cinemaabyss.example.com/api/movies
+```
 
-## Persistence
+Для API-проверок через ingress можно использовать:
 
-The chart mounts a Persistent Volume for PostgreSQL, Kafka, and Zookeeper. The volume is created using dynamic volume provisioning. If you want to disable this functionality, you can set `database.persistence.enabled`, `kafka.persistence.enabled`, and `zookeeper.persistence.enabled` to `false`.
-
-## Image Pull Secrets
-
-The chart includes a secret for pulling images from private registries. The secret is created using the value provided in `imagePullSecrets.dockerconfigjson`.
+```bash
+bash ops/remote-vm/run-postman-kubernetes.sh
+```

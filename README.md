@@ -55,10 +55,14 @@
 ### Kubernetes
 Манифесты Kubernetes для развертывания всех компонентов расположены в src/kubernetes/.
 
+Для задания с `Istio` и `circuit breaker` используется отдельный манифест
+`src/kubernetes/circuit-breaker-config.yaml`, который накатывается поверх уже
+работающего Helm/Kubernetes контура.
+
 ### Helm Charts
 Charts Helm для упрощения развертывания и управления:
 
-Расположены в src/kubernetes/helm/cinemaabyss/.
+Расположены в `src/kubernetes/helm/`.
 
 ### Kafka
 Расположено в src/kubernetes/kafka/.
@@ -160,6 +164,12 @@ kubectl apply -f src/kubernetes/proxy-service.yaml
 1. Создайте форк или клонируйте этот репозиторий в свой аккаунт GitHub.
 2. Отправьте изменения в основную ветку для запуска пайплайна CI/CD.
 3. Выполните ручное или автоматическое развертывание (Helm) в локальной среде
+
+Пример установки:
+
+```bash
+helm install cinemaabyss ./src/kubernetes/helm --namespace cinemaabyss --create-namespace
+```
 
 ## Тестирование API с Postman
 Проект включает комплексный набор тестов Postman, которые можно запускать из командной строки с помощью Newman. 

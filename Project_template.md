@@ -5,7 +5,7 @@
 1. Спроектируйте to be архитектуру КиноБездны, разделив всю систему на отдельные домены и организовав интеграционное взаимодействие и единую точку вызова сервисов.
 Результат представьте в виде контейнерной диаграммы в нотации С4.
 Добавьте ссылку на файл в этот шаблон
-[ссылка на файл](ссылка)
+[ссылка на файл](docs/c4-container-to-be.md)
 
 
 ## Задание 2
@@ -47,6 +47,15 @@
    ```
 - Протестируйте постепенный переход, изменив переменную окружения MOVIES_MIGRATION_PERCENT в файле docker-compose.yml.
 
+Результат:
+- Proxy service реализован в [src/microservices/proxy/main.go](src/microservices/proxy/main.go)
+- Docker-конфигурация proxy добавлена в [src/microservices/proxy/Dockerfile](src/microservices/proxy/Dockerfile) и [src/microservices/proxy/go.mod](src/microservices/proxy/go.mod)
+- Реализован health-check `GET /health`
+- Реализовано проксирование маршрутов `GET/POST /api/movies`, `GET/POST /api/users`, `GET/POST /api/payments`, `GET/POST /api/subscriptions`
+- Для `/api/movies` реализован паттерн Strangler Fig с использованием `GRADUAL_MIGRATION` и `MOVIES_MIGRATION_PERCENT`
+- Postman-тесты для Proxy Service успешно пройдены
+- Проверка через API Gateway успешна: `GET /health`, `GET /api/movies`, `GET /api/users`
+
 ### 2. Kafka
  Вам как архитектуру нужно также проверить гипотезу насколько просто реализовать применение Kafka в данной архитектуре.
 
@@ -59,6 +68,31 @@
 Необходимые тесты для проверки этого API вызываются при запуске npm run test:local из папки tests/postman 
 Приложите скриншот тестов и скриншот состояния топиков Kafka http://localhost:8090 
 
+Результат:
+- Events service реализован в [src/microservices/events/main.go](src/microservices/events/main.go)
+- Docker-конфигурация events добавлена в [src/microservices/events/Dockerfile](src/microservices/events/Dockerfile) и [src/microservices/events/go.mod](src/microservices/events/go.mod)
+- Реализованы endpoint'ы:
+  - `GET /api/events/health`
+  - `POST /api/events/movie`
+  - `POST /api/events/user`
+  - `POST /api/events/payment`
+- Реализована публикация событий в Kafka по топикам `movie-events`, `user-events`, `payment-events`
+- Реализовано чтение сообщений из Kafka внутри самого `events-service` с логированием обработанных событий
+- Полный docker-стек успешно поднят через [docker-compose.yml](docker-compose.yml)
+- Postman-тесты для Monolith, Movies, Events и Proxy успешно пройдены: `22` запросов, `42` assertions, `0` ошибок
+- Docker-скрипты для запуска и проверки на удаленной VM добавлены в [ops/remote-vm](ops/remote-vm)
+
+### Скриншот Postman / Newman
+
+Результат успешного прогона API-тестов для `Monolith`, `Movies`, `Events` и `Proxy`.
+
+![Postman tests](docs/screenshots/postman-tests.png)
+
+### Скриншот Kafka UI
+
+Состояние Kafka-топиков после отправки событий через `events-service`.
+
+![Kafka UI topics](docs/screenshots/kafka-ui-topics.png)
 
 ## Задание 3
 
@@ -109,6 +143,30 @@ jobs:
 ```
 Как только сборка отработает и в github registry появятся ваши образы, можно переходить к блоку настройки Kubernetes
 Успешным результатом данного шага является "зеленая" сборка и "зеленые" тесты
+
+Результат:
+- Workflow [`.github/workflows/docker-build-push.yml`](.github/workflows/docker-build-push.yml) доработан:
+  - добавлен прогон API-тестов перед публикацией образов
+  - добавлена сборка и публикация образов `monolith`, `movies-service`, `events-service`, `proxy-service`
+  - триггеры обновлены для рабочих веток и изменений в `src/**`, `tests/postman/**`, `docker-compose.yml` и workflow-файлах
+- Workflow [`.github/workflows/api-tests.yml`](.github/workflows/api-tests.yml) доработан:
+  - выполняет `docker compose up -d --build`
+  - ждёт готовности сервисов через HTTP health-check
+  - запускает Postman-тесты через `npm run test:local`
+- GHCR-образы опубликованы в пространстве `ghcr.io/yerlanamantaiuly/architecture-pro-cinemaabyss`
+- GitHub Actions и публикация образов подтверждены отдельно в интерфейсе GitHub
+
+### Скриншот GitHub Actions
+
+Подтверждение успешных запусков workflow для ветки `cinema`.
+
+![GitHub Actions](docs/screenshots/github-jobs.png)
+
+### Скриншот GHCR Packages
+
+Подтверждение публикации образов `monolith`, `movies-service`, `events-service`, `proxy-service` в GitHub Container Registry.
+
+![GHCR Packages](docs/screenshots/github-packages.png)
 
 
 ### Proxy в Kubernetes
@@ -274,151 +332,140 @@ cat .docker/config.json | base64
 #### Шаг 3
 Добавьте сюда скриншота вывода при вызове https://cinemaabyss.example.com/api/movies и  скриншот вывода event-service после вызова тестов.
 
+Результат:
+- В Kubernetes добавлены и настроены:
+  - [`src/kubernetes/events-service.yaml`](src/kubernetes/events-service.yaml)
+  - [`src/kubernetes/proxy-service.yaml`](src/kubernetes/proxy-service.yaml)
+  - [`src/kubernetes/ingress.yaml`](src/kubernetes/ingress.yaml)
+  - [`src/kubernetes/configmap.yaml`](src/kubernetes/configmap.yaml)
+  - [`src/kubernetes/dockerconfigsecret.yaml`](src/kubernetes/dockerconfigsecret.yaml)
+- Образы в `src/kubernetes/*.yaml` обновлены под `ghcr.io/yerlanamantaiuly/architecture-pro-cinemaabyss/...`
+- Все pod'ы в namespace `cinemaabyss` успешно поднялись в статус `Running`
+- Ingress работает, вызов `http://cinemaabyss.example.com/api/movies` успешно возвращает список фильмов
+- Kubernetes-тесты Postman/Newman успешно пройдены: `22` запросов, `42` assertions, `0` ошибок
+- `events-service` обработал события из Kafka, что подтверждается логами `Processed event from topic=...`
+
+### Скриншот вызова `/api/movies` в Kubernetes
+
+Результат вызова `http://cinemaabyss.example.com/api/movies` через ingress Kubernetes.
+
+![Cinema K8s](docs/screenshots/cinema-k8s.png)
+
+### Скриншот Kubernetes Postman / Newman
+
+Успешный прогон API-тестов против ingress Kubernetes.
+
+![Kubernetes Postman tests](assets/c__Users_ye.amantaiuly_AppData_Roaming_Cursor_User_workspaceStorage_abe7d098a093b2df805ede663e84f845_images_image-4cbcb4d6-b05f-4edb-95a6-4938c63e746d.png)
+
+### Логи `events-service` после тестов
+
+```text
+2026/04/07 11:48:44 Processed event from topic=movie-events partition=0 offset=0 payload={"id":"movie-1775562523164799597","type":"movie","timestamp":"2026-04-07T11:48:43Z","payload":{"movie_id":6,"title":"Test Movie Event","action":"viewed","user_id":4}}
+2026/04/07 11:48:45 Processed event from topic=user-events partition=0 offset=0 payload={"id":"user-1775562524299256290","type":"user","timestamp":"2026-04-07T11:48:44Z","payload":{"user_id":4,"username":"testuser","action":"logged_in","timestamp":"2026-04-07T11:48:44.296Z"}}
+2026/04/07 11:48:46 Processed event from topic=payment-events partition=0 offset=0 payload={"id":"payment-1775562525421147477","type":"payment","timestamp":"2026-04-07T11:48:45Z","payload":{"payment_id":4,"user_id":4,"amount":9.99,"status":"completed","timestamp":"2026-04-07T11:48:45.418Z","method_type":"credit_card"}}
+```
+
 
 ## Задание 4
 Для простоты дальнейшего обновления и развертывания вам как архитектуру необходимо так же реализовать helm-чарты для прокси-сервиса и проверить работу 
 
-Для этого:
-1. Перейдите в директорию helm и отредактируйте файл values.yaml
+Результат:
+- Helm chart в `src/kubernetes/helm` доведён до состояния, повторяющего рабочие plain Kubernetes manifests
+- В `values.yaml` обновлены пути до образов в `ghcr.io/yerlanamantaiuly/architecture-pro-cinemaabyss/*`
+- В `templates/services/proxy-service.yaml` и `templates/services/events-service.yaml` добавлены полноценные шаблоны `Deployment` и `Service`
+- В `templates/configmap.yaml` добавлены корректные адреса `MONOLITH_URL`, `MOVIES_SERVICE_URL`, `EVENTS_SERVICE_URL`
+- Chart по умолчанию работает с публичными образами без `imagePullSecret`; поддержка приватного registry оставлена как опциональная настройка через `values.yaml`
+- Добавлены helper-скрипты `ops/remote-vm/create-ghcr-secret.sh` и `ops/remote-vm/run-helm-install.sh`; создание секрета требуется только для приватных образов
+- Выполнена установка через Helm в namespace `cinemaabyss`, release `cinemaabyss` успешно развернут со статусом `deployed`
+- Все pod'ы после установки через Helm вышли в состояние `Running`:
+  - `events-service`
+  - `kafka`
+  - `monolith`
+  - `movies-service`
+  - `postgres`
+  - `proxy-service`
+  - `zookeeper`
+- Проверка ingress успешна: `curl http://cinemaabyss.example.com/api/movies` возвращает список фильмов
+- Postman/Newman тесты против ingress Kubernetes после установки через Helm успешно пройдены:
+  - `22` requests
+  - `42` assertions
+  - `0` failed requests
+  - `0` failed assertions
+- Отдельно подтверждён сценарий проверки ревьюером: после удаления `dockerconfigjson` secret chart по-прежнему успешно устанавливается, так как образы в `GHCR` публичные и не требуют авторизации
 
-```yaml
-# Proxy service configuration
-proxyService:
-  enabled: true
-  image:
-    repository: ghcr.io/db-exp/cinemaabysstest/proxy-service
-    tag: latest
-    pullPolicy: Always
-  replicas: 1
-  resources:
-    limits:
-      cpu: 300m
-      memory: 256Mi
-    requests:
-      cpu: 100m
-      memory: 128Mi
-  service:
-    port: 80
-    targetPort: 8000
-    type: ClusterIP
-```
+### Скриншот Helm deployment
 
-- Вместо ghcr.io/db-exp/cinemaabysstest/proxy-service напишите свой путь до образа для всех сервисов
-- для imagePullSecret проставьте свое значение (скопируйте из конфигурации kubernetes)
-  ```yaml
-  imagePullSecrets:
-      dockerconfigjson: ewoJImF1dGhzIjogewoJCSJnaGNyLmlvIjogewoJCQkiYXV0aCI6ICJaR0l0Wlhod09tZG9jRjl2UTJocVZIa3dhMWhKVDIxWmFVZHJOV2hRUW10aFVXbFZSbTVaTjJRMFNYUjRZMWM9IgoJCX0KCX0sCgkiY3JlZHNTdG9yZSI6ICJkZXNrdG9wIiwKCSJjdXJyZW50Q29udGV4dCI6ICJkZXNrdG9wLWxpbnV4IiwKCSJwbHVnaW5zIjogewoJCSIteC1jbGktaGludHMiOiB7CgkJCSJlbmFibGVkIjogInRydWUiCgkJfQoJfSwKCSJmZWF0dXJlcyI6IHsKCQkiaG9va3MiOiAidHJ1ZSIKCX0KfQ==
-  ```
+Скриншот успешного `helm install` / `helm upgrade --install` и состояния pod'ов в namespace `cinemaabyss`.
 
-2. В папке ./templates/services заполните шаблоны для proxy-service.yaml и events-service.yaml (опирайтесь на свою kubernetes конфигурацию - смысл helm'а сделать шаблоны для быстрого обновления и установки)
+![Helm deployment](docs/screenshots/helm-deployment1.png)
+![Helm deployment](docs/screenshots/helm-deployment2.png)
 
-```yaml
-template:
-    metadata:
-      labels:
-        app: proxy-service
-    spec:
-      containers:
-       Тут ваша конфигурация
-```
+### Скриншот `/api/movies` после Helm
 
-3. Проверьте установку
-Сначала удалим установку руками
+Скриншот успешного вызова `https://cinemaabyss.example.com/api/movies` после установки через Helm.
 
-```bash
-kubectl delete all --all -n cinemaabyss
-kubectl delete  namespace cinemaabyss
-```
-Запустите 
-```bash
-helm install cinemaabyss .\src\kubernetes\helm --namespace cinemaabyss --create-namespace
-```
-Если в процессе будет ошибка
-```code
-[2025-04-08 21:43:38,780] ERROR Fatal error during KafkaServer startup. Prepare to shutdown (kafka.server.KafkaServer)
-kafka.common.InconsistentClusterIdException: The Cluster ID OkOjGPrdRimp8nkFohYkCw doesn't match stored clusterId Some(sbkcoiSiQV2h_mQpwy05zQ) in meta.properties. The broker is trying to join the wrong cluster. Configured zookeeper.connect may be wrong.
-```
+![Helm deployment](docs/screenshots/helm-deployment2.png)
 
-Проверьте развертывание:
-```bash
-kubectl get pods -n cinemaabyss
-minikube tunnel
-```
+### Скриншот Kubernetes Postman / Newman после Helm
 
-Потом вызовите 
-https://cinemaabyss.example.com/api/movies
-и приложите скриншот развертывания helm и вывода https://cinemaabyss.example.com/api/movies
+Успешный прогон API-тестов против ingress Kubernetes после установки через Helm.
+
+![Helm Postman tests](docs/screenshots/helm-postman-tests.png)
 
 
 # Задание 5
 Компания планирует активно развиваться и для повышения надежности, безопасности, реализации сетевых паттернов типа Circuit Breaker и канареечного деплоя вам как архитектору необходимо развернуть istio и настроить circuit breaker для monolith и movies сервисов.
 
-```bash
+Результат:
+- Для `Istio` добавлены отдельные файлы и скрипты, которые накатываются поверх уже рабочего Helm/Kubernetes контура и не ломают проверяемый сценарий задания 4:
+  - `src/kubernetes/circuit-breaker-config.yaml`
+  - `ops/remote-vm/run-istio-install.sh`
+  - `ops/remote-vm/run-istio-fortio.sh`
+  - `ops/remote-vm/cleanup-istio.sh`
+- В `istio-system` успешно установлены:
+  - `istio-base`
+  - `istiod`
+  - `istio-ingressgateway`
+- Для namespace `cinemaabyss` включён `sidecar injection`: `istio-injection=enabled`
+- После `rollout restart` сервисы `monolith`, `movies-service`, `events-service`, `proxy-service` успешно поднялись с sidecar'ами `2/2 Running`
+- Применены `DestinationRule` для:
+  - `movies-service.cinemaabyss.svc.cluster.local`
+  - `monolith.cinemaabyss.svc.cluster.local`
+- Базовая работоспособность после включения Istio сохранена: `curl http://cinemaabyss.example.com/api/movies` успешно возвращает список фильмов
+- Для проверки `circuit breaker` развернут `fortio` и выполнен нагрузочный тест `500` запросов с конкурентностью `50`
 
-helm repo add istio https://istio-release.storage.googleapis.com/charts
-helm repo update
+### Результат нагрузки на `movies-service`
 
-helm install istio-base istio/base -n istio-system --set defaultRevision=default --create-namespace
-helm install istio-ingressgateway istio/gateway -n istio-system
-helm install istiod istio/istiod -n istio-system --wait
+Под нагрузкой `fortio` зафиксировано срабатывание `circuit breaker`:
 
-helm install cinemaabyss .\src\kubernetes\helm --namespace cinemaabyss --create-namespace
-
-kubectl label namespace cinemaabyss istio-injection=enabled --overwrite
-
-kubectl get namespace -L istio-injection
-
-kubectl apply -f .\src\kubernetes\circuit-breaker-config.yaml -n cinemaabyss
-
+```text
+Code 200 : 3 (0.6 %)
+Code 503 : 497 (99.4 %)
+cluster.outbound|8081||movies-service.cinemaabyss.svc.cluster.local;.upstream_rq_pending_overflow: 69
+cluster.outbound|8081||movies-service.cinemaabyss.svc.cluster.local;.upstream_rq_pending_total: 4
 ```
 
-Тестирование
+### Результат нагрузки на `monolith`
 
-# fortio
-```bash
-kubectl apply -f https://raw.githubusercontent.com/istio/istio/release-1.25/samples/httpbin/sample-client/fortio-deploy.yaml -n cinemaabyss
+Под нагрузкой `fortio` зафиксировано срабатывание `circuit breaker`:
+
+```text
+Code 200 : 27 (5.4 %)
+Code 503 : 473 (94.6 %)
+cluster.outbound|8080||monolith.cinemaabyss.svc.cluster.local;.upstream_rq_pending_overflow: 473
+cluster.outbound|8080||monolith.cinemaabyss.svc.cluster.local;.upstream_rq_pending_total: 27
 ```
 
-# Get the fortio pod name
-```bash
-FORTIO_POD=$(kubectl get pod -n cinemaabyss | grep fortio | awk '{print $1}')
+### Скриншот работы circuit breaker
 
-kubectl exec -n cinemaabyss $FORTIO_POD -c fortio -- fortio load -c 50 -qps 0 -n 500 -loglevel Warning http://movies-service:8081/api/movies
-```
-Например,
+Скриншот вывода `fortio` и метрик `pilot-agent request GET stats`, подтверждающих `503` и рост `upstream_rq_pending_overflow`.
 
-```bash
-kubectl exec -n cinemaabyss fortio-deploy-b6757cbbb-7c9qg  -c fortio -- fortio load -c 50 -qps 0 -n 500 -loglevel Warning http://movies-service:8081/api/movies
-```
+![Istio circuit breaker](docs/screenshots/istio-circuit-breaker.png)
 
-Вывод будет типа такого
+### Очистка Istio-контура
+
+Для возврата к базовому Helm/Kubernetes сценарию без Istio используется:
 
 ```bash
-IP addresses distribution:
-10.106.113.46:8081: 421
-Code 200 : 79 (15.8 %)
-Code 500 : 22 (4.4 %)
-Code 503 : 399 (79.8 %)
-```
-Можно еще проверить статистику
-
-```bash
-kubectl exec -n cinemaabyss fortio-deploy-b6757cbbb-7c9qg -c istio-proxy -- pilot-agent request GET stats | grep movies-service | grep pending
-```
-
-И там смотрим 
-
-```bash
-cluster.outbound|8081||movies-service.cinemaabyss.svc.cluster.local;.upstream_rq_pending_total: 311 - столько раз срабатывал circuit breaker
-You can see 21 for the upstream_rq_pending_overflow value which means 21 calls so far have been flagged for circuit breaking.
-```
-
-Приложите скриншот работы circuit breaker'а
-
-Удаляем все
-```bash
-istioctl uninstall --purge
-kubectl delete namespace istio-system
-kubectl delete all --all -n cinemaabyss
-kubectl delete namespace cinemaabyss
+bash ops/remote-vm/cleanup-istio.sh
 ```

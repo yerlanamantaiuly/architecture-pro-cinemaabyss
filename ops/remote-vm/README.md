@@ -16,8 +16,10 @@
 3. Запустить `ops/remote-vm/bootstrap-ubuntu-24.04.sh` от `root`.
 4. Перелогиниться, чтобы применилось членство в группе Docker.
 5. Запустить `ops/remote-vm/check-host.sh`.
-6. Запустить `ops/remote-vm/run-compose-baseline.sh` из корня репозитория.
-7. После появления `proxy/events` и образов запустить
+6. Если нужно быстро оживить старый контур, запустить `ops/remote-vm/run-monolith-only.sh`.
+7. Для полного docker-стека запустить `ops/remote-vm/run-full-stack.sh`.
+8. При необходимости снять baseline через `ops/remote-vm/run-compose-baseline.sh`.
+9. После появления образов для Kubernetes запустить
    `ops/remote-vm/start-minikube.sh`.
 
 ## Что делают скрипты
@@ -25,17 +27,34 @@
 - `bootstrap-ubuntu-24.04.sh`: ставит Docker, Compose plugin, `kubectl`, Helm,
   Minikube, Git, `curl` и полезные сетевые утилиты.
 - `check-host.sh`: проверяет CPU, память, диск и наличие нужных бинарников.
+- `run-monolith-only.sh`: поднимает только старый монолитный контур с PostgreSQL.
+- `run-full-stack.sh`: поднимает весь docker-стек и проверяет основные endpoint'ы.
+- `run-postman-docker.sh`: прогоняет Postman/Newman тесты в Docker без установки Node.js на сервер.
+- `run-postman-kubernetes.sh`: прогоняет Postman/Newman тесты против ingress Kubernetes без установки Node.js на сервер. По умолчанию использует `192.168.49.2`, при необходимости IP можно переопределить через `K8S_INGRESS_IP`.
 - `run-compose-baseline.sh`: поднимает только те сервисы, которые уже реально
   есть в репозитории, и сохраняет диагностический отчет.
+- `run-k8s-plain.sh`: применяет plain Kubernetes manifests в порядке из задания 3.
+- `run-helm-install.sh`: удаляет предыдущий Helm release/namespace и ставит chart
+  заново через `helm install`.
+- `create-ghcr-secret.sh`: создаёт или обновляет `docker-registry` secret для
+  доступа Kubernetes к `ghcr.io`, если образы приватные.
+- `run-istio-install.sh`: устанавливает `Istio`, включает sidecar injection для
+  `cinemaabyss` и применяет `circuit-breaker-config.yaml`.
+- `run-istio-fortio.sh`: разворачивает `fortio` и запускает нагрузочный тест для
+  проверки `circuit breaker` у `movies-service` и `monolith`.
+- `cleanup-istio.sh`: удаляет `Istio`, `fortio` и связанные настройки, чтобы
+  вернуться к базовому Helm/Kubernetes сценарию.
 - `start-minikube.sh`: стартует профиль Minikube с размером под этот проект и
   включает ingress.
 
 ## Примечания
 
-- Эти скрипты специально не пытаются запускать `proxy-service` и
-  `events-service`, потому что в текущем состоянии репозитория эти сервисы еще
-  не реализованы.
-- Baseline через Docker Compose нужен для того, чтобы увидеть текущее состояние
-  интеграции без попыток силой запустить незавершенные сервисы.
-- Если позже понадобится доступ Kubernetes к GHCR, после публикации образов
-  нужно будет создать репозиторий/форк и подготовить `dockerconfigjson` secret.
+- `run-monolith-only.sh` нужен для быстрого подъема старого контура без всего
+  остального стека.
+- `run-full-stack.sh` нужен для проверки уже реализованного docker-контура.
+- Baseline через Docker Compose можно использовать как дополнительный
+  диагностический сценарий.
+- Если GHCR-образы публичные, Helm chart можно ставить без `dockerconfigjson` secret.
+- `create-ghcr-secret.sh` нужен только для сценария с приватными образами.
+- `Istio` добавляется отдельным шагом поверх уже работающего Helm/Kubernetes
+  контура, чтобы не ломать проверяемый сценарий из задания 4.

@@ -47,6 +47,15 @@
    ```
 - Протестируйте постепенный переход, изменив переменную окружения MOVIES_MIGRATION_PERCENT в файле docker-compose.yml.
 
+Результат:
+- Proxy service реализован в [src/microservices/proxy/main.go](src/microservices/proxy/main.go)
+- Docker-конфигурация proxy добавлена в [src/microservices/proxy/Dockerfile](src/microservices/proxy/Dockerfile) и [src/microservices/proxy/go.mod](src/microservices/proxy/go.mod)
+- Реализован health-check `GET /health`
+- Реализовано проксирование маршрутов `GET/POST /api/movies`, `GET/POST /api/users`, `GET/POST /api/payments`, `GET/POST /api/subscriptions`
+- Для `/api/movies` реализован паттерн Strangler Fig с использованием `GRADUAL_MIGRATION` и `MOVIES_MIGRATION_PERCENT`
+- Postman-тесты для Proxy Service успешно пройдены
+- Проверка через API Gateway успешна: `GET /health`, `GET /api/movies`, `GET /api/users`
+
 ### 2. Kafka
  Вам как архитектуру нужно также проверить гипотезу насколько просто реализовать применение Kafka в данной архитектуре.
 
@@ -59,6 +68,31 @@
 Необходимые тесты для проверки этого API вызываются при запуске npm run test:local из папки tests/postman 
 Приложите скриншот тестов и скриншот состояния топиков Kafka http://localhost:8090 
 
+Результат:
+- Events service реализован в [src/microservices/events/main.go](src/microservices/events/main.go)
+- Docker-конфигурация events добавлена в [src/microservices/events/Dockerfile](src/microservices/events/Dockerfile) и [src/microservices/events/go.mod](src/microservices/events/go.mod)
+- Реализованы endpoint'ы:
+  - `GET /api/events/health`
+  - `POST /api/events/movie`
+  - `POST /api/events/user`
+  - `POST /api/events/payment`
+- Реализована публикация событий в Kafka по топикам `movie-events`, `user-events`, `payment-events`
+- Реализовано чтение сообщений из Kafka внутри самого `events-service` с логированием обработанных событий
+- Полный docker-стек успешно поднят через [docker-compose.yml](docker-compose.yml)
+- Postman-тесты для Monolith, Movies, Events и Proxy успешно пройдены: `22` запросов, `42` assertions, `0` ошибок
+- Docker-скрипты для запуска и проверки на удаленной VM добавлены в [ops/remote-vm](ops/remote-vm)
+
+### Скриншот Postman / Newman
+
+Результат успешного прогона API-тестов для `Monolith`, `Movies`, `Events` и `Proxy`.
+
+![Postman tests](docs/screenshots/postman-tests.png)
+
+### Скриншот Kafka UI
+
+Состояние Kafka-топиков после отправки событий через `events-service`.
+
+![Kafka UI topics](docs/screenshots/kafka-ui-topics.png)
 
 ## Задание 3
 

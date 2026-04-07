@@ -32,6 +32,7 @@
 - `run-postman-docker.sh`: прогоняет Postman/Newman тесты в Docker без установки Node.js на сервер.
 - `run-compose-baseline.sh`: поднимает только те сервисы, которые уже реально
   есть в репозитории, и сохраняет диагностический отчет.
+- `run-k8s-plain.sh`: применяет plain Kubernetes manifests в порядке из задания 3.
 - `start-minikube.sh`: стартует профиль Minikube с размером под этот проект и
   включает ingress.
 

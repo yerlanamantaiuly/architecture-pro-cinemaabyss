@@ -96,7 +96,13 @@ bash ops/remote-vm/run-compose-baseline.sh
 bash ops/remote-vm/run-postman-docker.sh
 ```
 
-10. Только после подготовки Kubernetes-контура готовьте Minikube:
+10. Для plain Kubernetes-манифестов:
+
+```bash
+bash ops/remote-vm/run-k8s-plain.sh
+```
+
+11. Только после подготовки Kubernetes-контура готовьте Minikube:
 
 ```bash
 bash ops/remote-vm/start-minikube.sh

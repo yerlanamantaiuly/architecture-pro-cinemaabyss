@@ -11,6 +11,10 @@ RUN go mod download
 # Copy source code
 COPY . .
 
+# Generate go.sum inside the container to avoid breaking the remote build
+# when the repository does not yet contain the checksum file.
+RUN go mod tidy
+
 # Build the application
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o events-service .
 
